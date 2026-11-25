@@ -1,9 +1,11 @@
 """Camada de serviço (negócio) independente da API REST e do front-end."""
 
+from ast import Tuple
 from decimal import Decimal
 import math
-from typing import Any
+from typing import Any, Self
 
+from loja import repository
 from loja.exceptions import (
     DadosInvalidosError,
     EstoqueInsuficienteError,
@@ -38,4 +40,13 @@ class LojaService:
         if not math.isfinite(preco_float) or preco_float <= 0:
             raise DadosInvalidosError("Campo 'preco' deve ser um número positivo.")
         return preco_float
-
+    
+    def consultar_estoque(self, codigo: int) -> tuple[int ,int]:
+        """Retorna uma tupla (código de resposta, estoque)
+           Se o produto não for encontrado a resposta será 404 e o segundo valor será -1"""
+        
+        prod = self._repository.obter(codigo) 
+        if prod is not None:
+            return (200, prod.estoque)
+        else:
+            return (400, -1)
