@@ -39,3 +39,22 @@ class LojaService:
             raise DadosInvalidosError("Campo 'preco' deve ser um número positivo.")
         return preco_float
 
+    def saida_estoque(self, codigo: Any, quantidade: Any) -> Produto:
+        codigo_validado = self._validar_inteiro(codigo, "codigo")
+        quantidade_validada = self._validar_inteiro(
+            quantidade, "quantidade", minimo=1
+        )
+
+        with self._repository.lock:
+            produto = self._repository.obter(codigo_validado)
+            if produto is None:
+                raise ProdutoNaoEncontradoError(
+                    f"Produto com código {codigo_validado} não encontrado."
+                )
+            if produto.estoque < quantidade_validada:
+                raise EstoqueInsuficienteError(
+                    f"Estoque insuficiente para o produto {codigo_validado}."
+                )
+
+            produto.estoque -= quantidade_validada
+            return produto
