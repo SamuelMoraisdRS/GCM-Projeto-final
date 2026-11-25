@@ -43,4 +43,21 @@ def create_app(service: LojaService | None = None) -> Flask:
     def handle_conflict(err: ProdutoJaExisteError):
         return jsonify({"erro": str(err)}), 409
 
+    @app.post("/loja/produto")
+    def cadastrar_produto():
+        dados = _get_json_object()
+        produto = loja_service.cadastrar_produto(
+            codigo=dados.get("codigo"),
+            preco=dados.get("preco"),
+        )
+        return (
+            jsonify(
+                {
+                    "codigo": produto.codigo,
+                    "preco": produto.preco,
+                    "estoque": produto.estoque,
+                }
+            ),
+            201,
+        )
     return app
