@@ -43,14 +43,42 @@ def create_app(service: LojaService | None = None) -> Flask:
     def handle_conflict(err: ProdutoJaExisteError):
         return jsonify({"erro": str(err)}), 409
 
+    @app.put("/loja/produto/<codigo>/entrada")
+    def entrada_estoque(codigo: str):
+        codigo_int = _parse_codigo_path(codigo)
+        dados = _get_json_object()
+        produto = loja_service.entrada_estoque(
+            codigo=codigo_int,
+            quantidade=dados.get("quantidade"),
+        )
+        return jsonify({"codigo": produto.codigo, "estoque": produto.estoque}), 200
+
     @app.put("/loja/produto/<codigo>/saida")
     def saida_estoque(codigo: str):
-        codigo_validado = _parse_codigo_path(codigo)
-        data = _get_json_object()
-        if "quantidade" not in data:
-            raise DadosInvalidosError("Campo 'quantidade' é obrigatório.")
-
-        produto = loja_service.saida_estoque(codigo_validado, data["quantidade"])
+        codigo_int = _parse_codigo_path(codigo)
+        dados = _get_json_object()
+        produto = loja_service.saida_estoque(
+            codigo=codigo_int,
+            quantidade=dados.get("quantidade"),
+        )
         return jsonify({"codigo": produto.codigo, "estoque": produto.estoque}), 200
+
+    @app.post("/loja/produto")
+    def cadastrar_produto():
+        dados = _get_json_object()
+        produto = loja_service.cadastrar_produto(
+            codigo=dados.get("codigo"),
+            preco=dados.get("preco"),
+        )
+        return (
+            jsonify(
+                {
+                    "codigo": produto.codigo,
+                    "preco": produto.preco,
+                    "estoque": produto.estoque,
+                }
+            ),
+            201,
+        )
 
     return app

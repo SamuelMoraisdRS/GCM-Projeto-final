@@ -39,22 +39,56 @@ class LojaService:
             raise DadosInvalidosError("Campo 'preco' deve ser um número positivo.")
         return preco_float
 
-    def saida_estoque(self, codigo: Any, quantidade: Any) -> Produto:
-        codigo_validado = self._validar_inteiro(codigo, "codigo")
-        quantidade_validada = self._validar_inteiro(
-            quantidade, "quantidade", minimo=1
+    def _obter_produto_existente(self, codigo: int) -> Produto:
+        produto = self._repository.obter(codigo)
+        if produto is None:
+            raise ProdutoNaoEncontradoError(
+                f"Produto com código {codigo} não encontrado."
+            )
+        return produto
+
+    @staticmethod
+    def _copiar_produto(produto: Produto) -> Produto:
+        return Produto(
+            codigo=produto.codigo,
+            preco=produto.preco,
+            estoque=produto.estoque,
         )
 
-        with self._repository.lock:
-            produto = self._repository.obter(codigo_validado)
-            if produto is None:
-                raise ProdutoNaoEncontradoError(
-                    f"Produto com código {codigo_validado} não encontrado."
-                )
-            if produto.estoque < quantidade_validada:
-                raise EstoqueInsuficienteError(
-                    f"Estoque insuficiente para o produto {codigo_validado}."
-                )
+    def cadastrar_produto(self, codigo: Any, preco: Any) -> Produto:
+        """Cadastra um novo produto com estoque inicial igual a zero."""
+        codigo_valido = self._validar_inteiro(codigo, "codigo", minimo=0)
+        preco_valido = self._validar_preco(preco)
 
-            produto.estoque -= quantidade_validada
-            return produto
+        with self._repository.lock:
+            if self._repository.existe(codigo_valido):
+                raise ProdutoJaExisteError(
+                    f"Já existe um produto cadastrado com o código {codigo_valido}."
+                )
+            produto = Produto(codigo=codigo_valido, preco=preco_valido, estoque=0)
+            self._repository.salvar(produto)
+            return self._copiar_produto(produto)
+
+    def entrada_estoque(self, codigo: Any, quantidade: Any) -> Produto:
+        """Acrescenta a quantidade informada ao estoque do produto."""
+        codigo_valido = self._validar_inteiro(codigo, "codigo", minimo=0)
+        qtd_valida = self._validar_inteiro(quantidade, "quantidade", minimo=1)
+
+        with self._repository.lock:
+            produto = self._obter_produto_existente(codigo_valido)
+            produto.estoque += qtd_valida
+            return self._copiar_produto(produto)
+
+    def saida_estoque(self, codigo: Any, quantidade: Any) -> Produto:
+        """Subtrai a quantidade informada do estoque do produto."""
+        codigo_valido = self._validar_inteiro(codigo, "codigo", minimo=0)
+        qtd_valida = self._validar_inteiro(quantidade, "quantidade", minimo=1)
+
+        with self._repository.lock:
+            produto = self._obter_produto_existente(codigo_valido)
+            if qtd_valida > produto.estoque:
+                raise EstoqueInsuficienteError(
+                    f"Estoque insuficiente para o produto {codigo_valido}."
+                )
+            produto.estoque -= qtd_valida
+            return self._copiar_produto(produto)
