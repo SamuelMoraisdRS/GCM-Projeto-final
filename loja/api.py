@@ -1,5 +1,6 @@
 """Camada API REST (backend) responsável apenas por repassar requisições à camada de serviço."""
 
+from multiprocessing import Value
 import re
 from typing import Any
 
@@ -31,6 +32,19 @@ def create_app(service: LojaService | None = None) -> Flask:
     app = Flask(__name__)
     loja_service = service if service is not None else LojaService()
 
+    @app.get("/loja/produto/<code>/estoque")
+    def get_product(code):
+        try:
+            parse_code = int(code)
+            response = loja_service.consultar_estoque(parse_code)
+            if response[0] != 200:
+                return jsonify({}, response[0])
+            else:
+                return jsonify({"codigo": parse_code, "estoque": response[1]})
+        except ValueError:
+            return jsonify({}), 400
+
+
     @app.errorhandler(DadosInvalidosError)
     def handle_bad_request(err: DadosInvalidosError):
         return jsonify({"erro": str(err)}), 400
@@ -42,6 +56,8 @@ def create_app(service: LojaService | None = None) -> Flask:
     @app.errorhandler(ProdutoJaExisteError)
     def handle_conflict(err: ProdutoJaExisteError):
         return jsonify({"erro": str(err)}), 409
+    
+
 
     @app.post("/loja/produto")
     def cadastrar_produto():
@@ -94,3 +110,4 @@ def create_app(service: LojaService | None = None) -> Flask:
         return jsonify(resultado), 201
 
     return app
+
