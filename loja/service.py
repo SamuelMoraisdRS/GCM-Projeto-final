@@ -99,3 +99,58 @@ class LojaService:
                 )
             produto.estoque -= qtd_valida
             return self._copiar_produto(produto)
+
+    def realizar_venda(self, itens: Any) -> dict[str, Any]:
+        """Realiza uma venda atômica de uma lista de itens."""
+        if not isinstance(itens, list) or len(itens) == 0:
+            raise DadosInvalidosError(
+                "Campo 'itens' é obrigatório e deve ser uma lista não vazia."
+            )
+
+        itens_validados: list[tuple[int, int]] = []
+        demanda_por_codigo: dict[int, int] = {}
+
+        for item in itens:
+            if not isinstance(item, dict):
+                raise DadosInvalidosError("Cada item da venda deve ser um objeto.")
+            codigo_valido = self._validar_inteiro(item.get("codigo"), "codigo", minimo=0)
+            qtd_valida = self._validar_inteiro(
+                item.get("quantidade"), "quantidade", minimo=1
+            )
+            itens_validados.append((codigo_valido, qtd_valida))
+            demanda_por_codigo[codigo_valido] = (
+                demanda_por_codigo.get(codigo_valido, 0) + qtd_valida
+            )
+
+        with self._repository.lock:
+            produtos: dict[int, Produto] = {}
+            for codigo_item in demanda_por_codigo:
+                produtos[codigo_item] = self._obter_produto_existente(codigo_item)
+
+            for codigo_item, qtd_total in demanda_por_codigo.items():
+                if qtd_total > produtos[codigo_item].estoque:
+                    raise EstoqueInsuficienteError(
+                        f"Estoque insuficiente para o produto {codigo_item}."
+                    )
+
+            total_venda = Decimal("0")
+            itens_resposta: list[dict[str, Any]] = []
+
+            for codigo_item, qtd_item in itens_validados:
+                produto = produtos[codigo_item]
+                produto.estoque -= qtd_item
+                subtotal = Decimal(str(produto.preco)) * Decimal(qtd_item)
+                total_venda += subtotal
+                itens_resposta.append(
+                    {
+                        "codigo": codigo_item,
+                        "quantidade": qtd_item,
+                        "subtotal": float(subtotal),
+                        "estoque": produto.estoque,
+                    }
+                )
+
+            return {
+                "total": float(total_venda),
+                "itens": itens_resposta,
+            }
