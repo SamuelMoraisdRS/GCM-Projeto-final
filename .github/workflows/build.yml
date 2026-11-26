@@ -1,0 +1,24 @@
+name: Build
+on:
+  push:
+    branches: ["feature/**"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout 
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Baixar Dependencias 
+        run: |
+          pip install -r requirements.txt
+
+      - name: Compilar 
+        run: |
+          python -m compileall -q .
