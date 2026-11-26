@@ -69,6 +69,13 @@ class LojaService:
             self._repository.salvar(produto)
             return self._copiar_produto(produto)
 
+    def consultar_estoque(self, codigo: Any) -> int:
+        """Retorna a quantidade atual em estoque do produto informado."""
+        codigo_valido = self._validar_inteiro(codigo, "codigo", minimo=0)
+        with self._repository.lock:
+            produto = self._obter_produto_existente(codigo_valido)
+            return produto.estoque
+
     def entrada_estoque(self, codigo: Any, quantidade: Any) -> Produto:
         """Acrescenta a quantidade informada ao estoque do produto."""
         codigo_valido = self._validar_inteiro(codigo, "codigo", minimo=0)
