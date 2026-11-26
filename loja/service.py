@@ -54,3 +54,24 @@ class LojaService:
 
             produto.estoque += quantidade_validada
             return produto
+    @staticmethod
+    def _copiar_produto(produto: Produto) -> Produto:
+        return Produto(
+            codigo=produto.codigo,
+            preco=produto.preco,
+            estoque=produto.estoque,
+        )
+
+    def cadastrar_produto(self, codigo: Any, preco: Any) -> Produto:
+        """Cadastra um novo produto com estoque inicial igual a zero."""
+        codigo_valido = self._validar_inteiro(codigo, "codigo", minimo=0)
+        preco_valido = self._validar_preco(preco)
+
+        with self._repository.lock:
+            if self._repository.existe(codigo_valido):
+                raise ProdutoJaExisteError(
+                    f"Já existe um produto cadastrado com o código {codigo_valido}."
+                )
+            produto = Produto(codigo=codigo_valido, preco=preco_valido, estoque=0)
+            self._repository.salvar(produto)
+            return self._copiar_produto(produto)

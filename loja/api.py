@@ -53,4 +53,21 @@ def create_app(service: LojaService | None = None) -> Flask:
         produto = loja_service.entrada_estoque(codigo_validado, data["quantidade"])
         return jsonify({"codigo": produto.codigo, "estoque": produto.estoque}), 200
 
+    @app.post("/loja/produto")
+    def cadastrar_produto():
+        dados = _get_json_object()
+        produto = loja_service.cadastrar_produto(
+            codigo=dados.get("codigo"),
+            preco=dados.get("preco"),
+        )
+        return (
+            jsonify(
+                {
+                    "codigo": produto.codigo,
+                    "preco": produto.preco,
+                    "estoque": produto.estoque,
+                }
+            ),
+            201,
+        )
     return app
