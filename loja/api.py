@@ -43,6 +43,30 @@ def create_app(service: LojaService | None = None) -> Flask:
     def handle_conflict(err: ProdutoJaExisteError):
         return jsonify({"erro": str(err)}), 409
 
+    @app.post("/loja/produto")
+    def cadastrar_produto():
+        dados = _get_json_object()
+        produto = loja_service.cadastrar_produto(
+            codigo=dados.get("codigo"),
+            preco=dados.get("preco"),
+        )
+        return (
+            jsonify(
+                {
+                    "codigo": produto.codigo,
+                    "preco": produto.preco,
+                    "estoque": produto.estoque,
+                }
+            ),
+            201,
+        )
+
+    @app.get("/loja/produto/<codigo>/estoque")
+    def consultar_estoque(codigo: str):
+        codigo_int = _parse_codigo_path(codigo)
+        estoque = loja_service.consultar_estoque(codigo_int)
+        return jsonify({"codigo": codigo_int, "estoque": estoque}), 200
+
     @app.put("/loja/produto/<codigo>/entrada")
     def entrada_estoque(codigo: str):
         codigo_int = _parse_codigo_path(codigo)
@@ -63,22 +87,10 @@ def create_app(service: LojaService | None = None) -> Flask:
         )
         return jsonify({"codigo": produto.codigo, "estoque": produto.estoque}), 200
 
-    @app.post("/loja/produto")
-    def cadastrar_produto():
+    @app.post("/loja/venda")
+    def realizar_venda():
         dados = _get_json_object()
-        produto = loja_service.cadastrar_produto(
-            codigo=dados.get("codigo"),
-            preco=dados.get("preco"),
-        )
-        return (
-            jsonify(
-                {
-                    "codigo": produto.codigo,
-                    "preco": produto.preco,
-                    "estoque": produto.estoque,
-                }
-            ),
-            201,
-        )
+        resultado = loja_service.realizar_venda(dados.get("itens"))
+        return jsonify(resultado), 201
 
     return app
