@@ -1,0 +1,42 @@
+name: Marcação da Configuração Integrada
+
+on:
+  pull_request:
+    branches:
+      - develop
+    types: [closed]
+
+permissions:
+  contents: write
+
+jobs:
+  marcar-integracao:
+    name: Criar Tag
+    if: >-
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'feature/')
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do commit de merge na develop
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 1
+
+      - name: Criar e publicar tag
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          BRANCH_SUFFIX="${HEAD_REF#feature/}"
+
+          TAG_NAME="build-${BRANCH_SUFFIX}"
+          
+          echo "Branch de origem: ${HEAD_REF}"
+          echo "Commit de merge na develop: ${MERGE_SHA}"
+          echo "Publicando tag: ${TAG_NAME}"
+
+          git tag -f "${TAG_NAME}" "${MERGE_SHA}"
+          git push --force origin "refs/tags/${TAG_NAME}"
